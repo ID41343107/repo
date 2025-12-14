@@ -2,15 +2,65 @@
 
 ## 解題說明
 
-本題要求多項式（Polynomial）類別，能夠進行：
+### 本題要求多項式（Polynomial）類別：
 
-    加法運算（operator+()）
+### 1.目標
 
-    乘法運算（operator*()）
+。 使用循環表和頭節點(Header Node)來表示單變數整數係數多項式
+    
+。 每個多項式的項目(Term)用一個鏈表節點表示，鏈表節點包含三個數據成員：
+    
+| Coef (係數)    | Exp (指數)    | Link (指向下一個節點)    |
+|----------------|---------------|-------------------------|
 
-    值代入運算（operator()()）
+### 2.內外表示
 
-    以及多項式的輸入與輸出格式化（operator>>()、operator<<()）
+。 外部表示：格式為 n, c₁, e₁, ..., cₙ, eₙ，其中：
+
+    n：多項式的項目數 (terms)
+    
+    c:係數，e:指數，指數按遞減順序排列 (e₁ > e₂ > ... > eₙ)
+    
+。 內部表示：使用循環鏈表儲存，並加入頭節點(Header Node)，以便操作
+
+### 3.功能清單
+
+#### (a) 輸入運算子 (istream& operat>>)
+
+    實現從輸入中讀取多項式，並按照循環鏈表結構儲存。
+    
+#### (b) 輸出運算子 (ostream& operator<<)
+
+    將鏈表多項式轉換回指定格式的文字輸出。
+    
+#### (c) 複製建構子
+
+    Polynomial::Polynomial(const Polynomial& a)：用多項式a初始化當前多項式。
+    
+#### (d) 賦值運算子重載
+
+    const Polynomial& Polynomial::operator=(const Polynomial& a) const：將多項式a指派於當前多項式。
+    
+#### (e) 解構子
+
+    Polynomial::Polynomial()：回收多項式使用的節點至可用空間表(Available-Space List)。
+    
+#### (f) 多項式加法運算
+
+    Polynomial operator+ (const Polynomial& b) const：兩個多項式相加，回傳結果多項式。
+    
+#### (g) 多項式減法運算
+
+    Polynomial operator- (const Polynomial& b) const：兩個多項式相減，回傳結果多項式。
+    
+#### (h) 多項式乘法運算
+
+    Polynomial operator* (const Polynomial& b) const：兩個多項式相乘，回傳結果多項式。
+    
+#### (i) 多項式求值
+
+    float Polynomial::Evaluate (float x) const：在給定變數值 x 下計算多項式的值。
+
 
 ### 解題想法
 
@@ -50,154 +100,232 @@
 
 ```cpp
 #include <iostream>
-#include <cmath>
-#include <algorithm>
 using namespace std;
 
-class Polynomial; // forward declaration
-
-class Term {
-    friend Polynomial;
-    friend ostream& operator<<(ostream& output, const Polynomial& Poly);
-private:
-    float coef; // 系數
-    int exp;    // 指數
+template<class T>
+class ChainNode {
+public:
+    T element;
+    ChainNode<T>* link;
+    ChainNode(const T& e = T(), ChainNode<T>* l = nullptr):element(e), link(l) {}
 };
 
-class Polynomial {
+template<class T>
+class ChainIterator {
+public:
+    ChainNode<T>* current;
+    ChainIterator(ChainNode<T>* start = nullptr) : current(start) {}
+    T& operator*() const { return current->element; }
+    T* operator->() const { return &current->element; }
+    ChainIterator<T>& operator++() {
+        current = current->link;
+        return *this;
+    }
+    ChainIterator<T> operator++(int) {
+        ChainIterator<T> old = *this;
+        current = current->link;
+        return old;
+    }
+    bool operator==(const ChainIterator<T>& rhs) const {
+        return current == rhs.current;
+    }
+    bool operator!=(const ChainIterator<T>& rhs) const {
+        return current != rhs.current;
+    }
+};
+
+template<class T>
+class Chain {
+protected:
+    ChainNode<T>* header;
+public:
+    typedef ChainIterator<T> iterator;
+    Chain() {
+        header = new ChainNode<T>();
+        header->link = header;
+    }
+    ~Chain() { Release(); delete header; }
+    bool IsEmpty() const {
+        return header->link == header;
+    }
+    iterator Begin() const { return iterator(header->link); }
+    iterator End() const { return iterator(header); }
+    void Release() {
+        ChainNode<T>* cur = header->link;
+        while (cur != header) {
+            ChainNode<T>* del = cur;
+            cur = cur->link;
+            delete del;
+        }
+        header->link = header;
+    }
+    void InsertBack(const T& e) {
+        ChainNode<T>* cur = header;
+        while (cur->link != header)
+            cur = cur->link;
+        cur->link = new ChainNode<T>(e, header);
+    }
+};
+
+struct Term {
+    int coef;
+    int exp;
+};
+
+class AvailableList {
 private:
-    Term* termArray;  // 儲存非零項的動態陣列
-    int capacity;     // 陣列大小
-    int terms;        // 非零項數量
+    ChainNode<Term>* head;
+public:
+    AvailableList() : head(nullptr) {}
+    bool IsEmpty() const { return head == nullptr; }
+    void GetBack(ChainNode<Term>* node) {
+        node->link = head;
+        head = node;
+    }
+    ChainNode<Term>* GetNode() {
+        if (IsEmpty()) return nullptr;
+        ChainNode<Term>* node = head;
+        head = head->link;
+        node->link = nullptr;
+        return node;
+    }
+};
+
+class Polynomial : public Chain<Term> {
+private:
+    static AvailableList Ava;
 
 public:
-    // p(x) = 0
-    Polynomial() : capacity(10), terms(0) {
-        termArray = new Term[capacity];
-    }
+    Polynomial() : Chain<Term>() {}
     ~Polynomial() {
-        delete[] termArray;
-    }
-
-    void NewTerm(const float c, const int e) {
-        if (c == 0) return;
-        if (terms == capacity) {
-            capacity *= 2;
-            Term* temp = new Term[capacity];
-            copy(termArray, termArray + terms, temp);
-            delete[] termArray;
-            termArray = temp;
+        ChainNode<Term>* cur = header->link;
+        while (cur != header) {
+            ChainNode<Term>* del = cur;
+            cur = cur->link;
+            Ava.GetBack(del);
         }
-        termArray[terms].coef = c;
-        termArray[terms++].exp = e;
+        header->link = header;
+    }
+    void NewTerm(int c, int e) {
+        if (c == 0) return;
+        ChainNode<Term>* prev = header;
+        ChainNode<Term>* cur = header->link;
+        while (cur != header && cur->element.exp > e) {
+            prev = cur;
+            cur = cur->link;
+        }
+        if (cur != header && cur->element.exp == e) {
+            cur->element.coef += c;
+            if (cur->element.coef == 0) {
+                prev->link = cur->link;
+                Ava.GetBack(cur);
+            }
+        }
+        else {
+            ChainNode<Term>* node = Ava.GetNode();
+            if (!node) node = new ChainNode<Term>();
+            node->element.coef = c;
+            node->element.exp = e;
+            node->link = cur;
+            prev->link = node;
+        }
     }
 
-    Polynomial operator+(const Polynomial& poly) const {
-        Polynomial result;
-        int a = 0, b = 0;
-        while (a < terms && b < poly.terms) {
-            if (termArray[a].exp == poly.termArray[b].exp) {
-                float sum = termArray[a].coef + poly.termArray[b].coef;
-                if (sum != 0)
-                    result.NewTerm(sum, termArray[a].exp);
-                a++; b++;
+    Polynomial operator+(const Polynomial& b) const {
+        Polynomial c;
+        auto it1 = Begin();
+        auto it2 = b.Begin();
+        while (it1 != End() && it2 != b.End()) {
+            if (it1->exp == it2->exp) {
+                c.NewTerm(it1->coef + it2->coef, it1->exp);
+                ++it1; ++it2;
             }
-            else if (termArray[a].exp > poly.termArray[b].exp) {
-                result.NewTerm(termArray[a].coef, termArray[a].exp);
-                a++;
+            else if (it1->exp > it2->exp) {
+                c.NewTerm(it1->coef, it1->exp);
+                ++it1;
             }
             else {
-                result.NewTerm(poly.termArray[b].coef, poly.termArray[b].exp);
-                b++;
+                c.NewTerm(it2->coef, it2->exp);
+                ++it2;
             }
         }
-        for (; a < terms; a++)
-            result.NewTerm(termArray[a].coef, termArray[a].exp);
-        for (; b < poly.terms; b++)
-            result.NewTerm(poly.termArray[b].coef, poly.termArray[b].exp);
-        return result;
+        while (it1 != End()) {
+            c.NewTerm(it1->coef, it1->exp);
+            ++it1;
+        }
+        while (it2 != b.End()) {
+            c.NewTerm(it2->coef, it2->exp);
+            ++it2;
+        }
+        return c;
     }
 
-    Polynomial operator*(const Polynomial& poly) const {
-        Polynomial result;
-        for (int i = 0; i < terms; i++) {
-            for (int j = 0; j < poly.terms; j++) {
-                float c = termArray[i].coef * poly.termArray[j].coef;
-                int e = termArray[i].exp + poly.termArray[j].exp;
-                bool found = false;
-                for (int k = 0; k < result.terms; k++) {
-                    if (result.termArray[k].exp == e) {
-                        result.termArray[k].coef += c;
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                    result.NewTerm(c, e);
+    Polynomial operator-(const Polynomial& b) const {
+        Polynomial c;
+        auto it1 = Begin();
+        auto it2 = b.Begin();
+        while (it1 != End() && it2 != b.End()) {
+            if (it1->exp == it2->exp) {
+                c.NewTerm(it1->coef - it2->coef, it1->exp);
+                ++it1; ++it2;
+            }
+            else if (it1->exp > it2->exp) {
+                c.NewTerm(it1->coef, it1->exp);
+                ++it1;
+            }
+            else {
+                c.NewTerm(-it2->coef, it2->exp);
+                ++it2;
             }
         }
-        sort(result.termArray, result.termArray + result.terms,
-            [](Term a, Term b) { return a.exp > b.exp; });
-        return result;
+        while (it1 != End()) {
+            c.NewTerm(it1->coef, it1->exp);
+            ++it1;
+        }
+        while (it2 != b.End()) {
+            c.NewTerm(-it2->coef, it2->exp);
+            ++it2;
+        }
+        return c;
     }
 
-    float operator()(float x) const {
-        float sum = 0;
-        for (int i = 0; i < terms; i++)
-            sum += termArray[i].coef * pow(x, termArray[i].exp);
-        return sum;
+    Polynomial operator*(const Polynomial& b) const {
+        Polynomial c;
+        for (auto it1 = Begin(); it1 != End(); ++it1) {
+            for (auto it2 = b.Begin(); it2 != b.End(); ++it2) {
+                c.NewTerm(it1->coef * it2->coef, it1->exp + it2->exp);
+            }
+        }
+        return c;
     }
 
-    friend istream& operator>>(istream& input, Polynomial& Poly) {
-        int n;
-        float coef;
-        int exp;
-        input >> n;
-        for (int i = 0; i < n; i++) {
-            input >> coef >> exp;
-            Poly.NewTerm(coef, exp);
-        }
-        return input;
-    }
-
-    friend ostream& operator<<(ostream& os, const Polynomial& poly) {
-        if (poly.terms == 0) {
-            os << "0";
-            return os;
-        }
-        for (int i = 0; i < poly.terms; i++) {
-            if (i > 0 && poly.termArray[i].coef > 0)
-                os << " + ";
-            else if (poly.termArray[i].coef < 0)
-                os << " ";
-            os << poly.termArray[i].coef;
-            if (poly.termArray[i].exp != 0)
-                os << "x^" << poly.termArray[i].exp;
-        }
+    friend ostream& operator<<(ostream& os, const Polynomial& p) {
+        for (auto it = p.Begin(); it != p.End(); ++it)
+            os << it->coef << " " << it->exp << " ";
         return os;
+    }
+
+    friend istream& operator>>(istream& is, Polynomial& p) {
+        int n, c, e;
+        is >> n;
+        for (int i = 0; i < n; i++) {
+            is >> c >> e;
+            p.NewTerm(c, e);
+        }
+        return is;
     }
 };
 
+AvailableList Polynomial::Ava;
+
 int main() {
-    Polynomial a, b;
-
-    cout << "多項式 a(x):" << endl;
-    cin >> a;
-    cout << "\n多項式 b(x):" << endl;
-    cin >> b;
-
-    cout << "\na(x) = " << a << endl;
-    cout << "b(x) = " << b << endl;
-
-    cout << "\na + b = " << a + b << endl;
-    cout << "a * b = " << a * b << endl;
-
-    float x;
-    cout << "\n要代入的 x ：";
-    cin >> x;
-    cout << "a(" << x << ") = " << a(x) << endl;
-    cout << "b(" << x << ") = " << b(x) << endl;
-
+    Polynomial p1, p2;
+    cin >> p1 >> p2;
+    cout << "P1 = " << p1 << endl;
+    cout << "P2 = " << p2 << endl;
+    cout << "P1 + P2 = " << (p1 + p2) << endl;
+    cout << "P1 - P2 = " << (p1 - p2) << endl;
+    cout << "P1 * P2 = " << (p1 * p2) << endl;
     return 0;
 }
 
