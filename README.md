@@ -38,10 +38,10 @@ Each polynomial is to be represented as a circular list with header node. To del
 
    Chain<int>::iterator xEnd = x.End();
 
-5. template <class T>class Polynomial
+4. template <class T>class Polynomial
 
    Polynomial Representation
 
    Circular List Representation of Polynomials
 
-7. Available Lists (加分項)
+5. Available Lists (加分項)
