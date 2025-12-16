@@ -198,10 +198,12 @@ public:
         return c;
     }
 
-    friend ostream& operator<<(ostream& os, const Polynomial& p) {
-        for (auto it = p.Begin(); it != p.End(); ++it)
-            os << it->coef << " " << it->exp << " ";
-        return os;
+    friend ostream& operator<< (ostream& os, const Polynomial& poly) {
+    for (ChainIterator<Term> it = poly.Begin(); it != poly.End(); ++it) {
+    if (it!=poly.Begin()) os << " + ";
+    os << it->coef << "x^" << it->exp << " ";
+    }
+    return os;
     }
 
     friend istream& operator>>(istream& is, Polynomial& p) {
