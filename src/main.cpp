@@ -232,12 +232,12 @@ int main() {
     int x;
     Polynomial p1, p2;
     cin >> p1 >> p2;
+    cin >> x;
     cout << "P1 = " << p1 << endl;
     cout << "P2 = " << p2 << endl;
     cout << "P1 + P2 = " << (p1 + p2) << endl;
     cout << "P1 - P2 = " << (p1 - p2) << endl;
     cout << "P1 * P2 = " << (p1 * p2) << endl;
-    cin>>x;
     cout << "P1("<< x <<") = " << p1.Eval(x) << endl;
     cout << "P2("<< x <<") = " << p2.Eval(x) << endl;
     return 0;
