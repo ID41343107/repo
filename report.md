@@ -2,97 +2,42 @@
 
 ## 解題說明
 
-### 本題要求多項式（Polynomial）類別：
+作業要求實作一個 Polynomial 類別，用來表示與操作單變數整數係數多項式。
 
-### 1.目標
+### 資料成員:
 
-。 使用循環表和頭節點(Header Node)來表示單變數整數係數多項式
-    
-。 每個多項式的項目(Term)用一個鏈表節點表示，鏈表節點包含三個數據成員：
-    
-| Coef (係數)    | Exp (指數)    | Link (指向下一個節點)    |
-|----------------|---------------|-------------------------|
+| coef(係數)   | exp(指數)    | link(指向下一個節點)    |
+|---------|--------|---------|
 
-### 2.內外表示
+### 實作:
 
-。 外部表示：格式為 n, c₁, e₁, ..., cₙ, eₙ，其中：
+1. template <class T>class ChainNode
 
-    n：多項式的項目數 (terms)
-    
-    c:係數，e:指數，指數按遞減順序排列 (e₁ > e₂ > ... > eₙ)
-    
-。 內部表示：使用循環鏈表儲存，並加入頭節點(Header Node)，以便操作
+2. template<class T>class Chain
 
-### 3.功能清單
+3. template<class T> class ChainIterator
 
-#### (a) 輸入運算子 (istream& operat>>)
+   Chain<int>::iterator xHere = x.Begin();
 
-    實現從輸入中讀取多項式，並按照循環鏈表結構儲存。
-    
-#### (b) 輸出運算子 (ostream& operator<<)
+   Chain<int>::iterator xEnd = x.End();
 
-    將鏈表多項式轉換回指定格式的文字輸出。
-    
-#### (c) 複製建構子
+4. template <class T>class Polynomial
 
-    Polynomial::Polynomial(const Polynomial& a)：用多項式a初始化當前多項式。
-    
-#### (d) 賦值運算子重載
+   Polynomial Representation
 
-    const Polynomial& Polynomial::operator=(const Polynomial& a) const：將多項式a指派於當前多項式。
-    
-#### (e) 解構子
+   Circular List Representation of Polynomials
 
-    Polynomial::Polynomial()：回收多項式使用的節點至可用空間表(Available-Space List)。
-    
-#### (f) 多項式加法運算
+5. Available Lists (加分項)
 
-    Polynomial operator+ (const Polynomial& b) const：兩個多項式相加，回傳結果多項式。
-    
-#### (g) 多項式減法運算
+## 解題想法
 
-    Polynomial operator- (const Polynomial& b) const：兩個多項式相減，回傳結果多項式。
-    
-#### (h) 多項式乘法運算
+。 利用 Circular Linked List 搭配 Header Node 來表示多項式，每一項以節點儲存其係數與指數。Header node 不存資料，能簡化串列的插入、刪除與空串列的判斷。
 
-    Polynomial operator* (const Polynomial& b) const：兩個多項式相乘，回傳結果多項式。
-    
-#### (i) 多項式求值
+。 多項式中的項目依指數遞減排序，使加法與減法可像合併兩個排序串列般同時走訪，提升效率。新增項目時，若指數相同則合併係數，合併後係數為零則刪除該節點。
 
-    float Polynomial::Evaluate (float x) const：在給定變數值 x 下計算多項式的值。
+。 有效管理記憶體，刪除的節點會回收到 Available List，新增節點時優先重複使用，減少動態配置成本。
 
-
-### 解題想法
-
-1. 以 Term 結構 儲存每一項的「係數（coef）」與「指數（exp）」。
-
-2. 以 動態陣列 Term* 儲存所有非零項，並可動態擴充容量。
-
-3. 實作運算子多載，使用者能夠自然的數學形式進行操作，例如：
-
-        Add 使用 operator+() cout<<a+b; 
-  
-        Mult 使用 operator*() cout<<a*b; 
-  
-        Eval 使用 operator()() cout<<a(x);
-
-4. 在多項式相加與相乘時，根據指數大小進行合併與排序，保證輸出結果的可讀性。
-
-### 範例說明
-
-若輸入：
-
-    a(x): 3x^2 + 2x^1 + 1
-    b(x): x^1 + 4
-    x=10
-
-則輸出：
-
-    a + b = 3x^2 + 3x^1 + 5
-    a * b = 3x^3 + 14x^2 + 9x^1 + 4
-    a(10) = 321
-    b(10) = 14
-
+。 乘法用雙層迴圈，將兩項相乘並插入結果多項式中，由系統自動合併同指數項。多項式求值則逐項計算 coef^exp 並加總。
 
 ## 程式實作
 
@@ -299,10 +244,20 @@ public:
         return c;
     }
 
-    friend ostream& operator<<(ostream& os, const Polynomial& p) {
-        for (auto it = p.Begin(); it != p.End(); ++it)
-            os << it->coef << " " << it->exp << " ";
-        return os;
+    friend ostream& operator<< (ostream& os, const Polynomial& poly) {
+    for (ChainIterator<Term> it = poly.Begin(); it != poly.End(); ++it) {
+    if (it!=poly.Begin()) os << " + ";
+    os << it->coef << "x^" << it->exp << " ";
+    }
+    return os;
+    }
+
+    float Eval(float x) const {
+        float result = 0;
+        for (auto it = Begin(); it != End(); ++it) {
+            result += it->coef * std::pow(x, it->exp);
+        }
+        return result;
     }
 
     friend istream& operator>>(istream& is, Polynomial& p) {
@@ -319,13 +274,17 @@ public:
 AvailableList Polynomial::Ava;
 
 int main() {
+    int x;
     Polynomial p1, p2;
     cin >> p1 >> p2;
+    cin>>x;
     cout << "P1 = " << p1 << endl;
     cout << "P2 = " << p2 << endl;
     cout << "P1 + P2 = " << (p1 + p2) << endl;
     cout << "P1 - P2 = " << (p1 - p2) << endl;
     cout << "P1 * P2 = " << (p1 * p2) << endl;
+    cout << "P1("<< x <<") = " << p1.Eval(x) << endl;
+    cout << "P2("<< x <<") = " << p2.Eval(x) << endl;
     return 0;
 }
 
@@ -335,94 +294,89 @@ int main() {
 
 ### 時間複雜度
 
-    加法 (operator+)： O(n + m)，其中 n、m 為兩多項式的項數。
+設多項式 P 與 Q 的項數分別為 n 與 m。
 
-    乘法 (operator*)： O(n × m)，需兩層迴圈逐項相乘。
-
-    代入 (operator())： O(n)，每項計算一次次方。
+| 操作                         | 時間複雜度                             |
+| --------------------------- | -------------------------------------- |
+|  新增（NewTerm）             |   **O(n)**                             |   
+| 輸入（operator>>）           | **O(n²)**                              |
+| 輸出（operator<<）           | **O(n)**                               |
+| 加法（operator+）            | **O(n+m)**                             |
+| 減法（operator-）            | **O(n+m)**                             |
+| 乘法（operator*）            | **O(n·m·k)**（k為結果項數）             |
+| 求值（Eval）                 | **O(n)**                               |
+| 取和還節點 (Available list)  | **O(1)**                               |
 
 ### 空間複雜度
 
-    動態陣列空間 O(n)，在乘法時可能暫時擴充到 O(n × m)。
+設多項式 P 與 Q 的項數分別為 n 與 m。
+
+| 操作             | 額外需求         | 空間複雜度        |
+| ---------------- | -------------- | ----------------- |
+| 儲存單一多項式    | 儲存 n 個項目      | **O(n)**        |
+| 輸入             | 建立 n 個節點      | **O(n)**        |
+| 輸出             | 僅使用暫存變數      | **O(1)**       |
+| 加法             | 結果最多 n+m 個項目 | **O(n+m)**      |
+| 減法             | 結果最多 n+m 個項目 | **O(n+m)**      |
+| 乘法             | 結果最多 n·m 個項目 | **O(n·m)**      |
+| 求值             | 使用常數暫存空間    | **O(1)**        |
+| Available list  | 無                 | **O(n)**        |
+
 
 ### 效能量測
 
-1. 對輸入項數 n = 100、1000、10000 測試運行時間：
+。 加法與減法運算利用多項式指數遞減排序，可同時走訪兩個串列完成，隨多項式項數線性成長，時間複雜度約 O(n+m)。
 
-    加法時間約隨 n 線性成長。
+。 多項式求值與輸出僅需走訪所有項目，時間複雜度為 O(n)。乘法需對每一項與另一個多項式的每一項相乘，並插入結果多項式，最壞情況時間複雜度為 O(n·m·k)（k 為結果項數），隨項數增加快速上升。
 
-    乘法時間呈平方成長，符合 O(n²) 預期。
+。 使用 available list 能重複利用節點，減少 new/delete 次數，提高實際執行效率，但不改變時間複雜度。
 
-2. 記憶體使用量隨項數擴增呈線性變化。
-
+。 實際測試可觀察到加法與減法隨項數增加執行時間穩定成長，而乘法則是主要的效能瓶頸。
 
 ## 測試與驗證
 
 ### 輸入
 
-多項式 a(x):
-
-    3
-
-    2 3
-
-    2 2
-
-    4 1
-
-多項式 b(x):
-
-    2
-
-    3 1
-
-    4 0
+    3 2 3 2 2 4 1
     
-要代入x ：
-      
+    2 3 1 4 0
+    
     2
 
-### 則輸出
+### 輸出
 
-    a(x) = 2x^3 + 2x^2 + 4x^1
-
-    b(x) = 3x^1 + 4
-
-    a + b = 2x^3 + 2x^2 + 7x^1 + 4
-
-    a * b = 6x^4 + 14x^3 + 20x^2 + 16x^1
-
-    a(2) = 32
-
-    b(2) = 10
+    P1 = 2x^3 + 2x^2 + 4x^1
+    
+    P2 = 3x^1 + 4x^0
+    
+    P1 + P2 = 2x^3 + 2x^2 + 7x^1 + 4x^0
+    
+    P1 - P2 = 2x^3 + 2x^2 + 1x^1 + -4x^0
+    
+    P1 * P2 = 6x^4 + 14x^3 + 20x^2 + 16x^1
+    
+    P1(2) = 32
+    
+    P2(2) = 10
 
 ## 申論及開發報告
 
 ### 心得討論
 
-在本次作業中，我學習到如何以物件導向的方式設計數學結構「多項式」。
+透過本次作業，我對多項式的鏈結串列表示法有深刻的理解。使用 circular linked list 搭配 header node，使插入、刪除與空串列判斷更加簡潔，程式結構清楚。
 
-利用類別與運算子多載，能讓多項式之間的運算像數學運算一樣，例如 a + b、a * b、a(x) 等操作，讓程式的可讀性提升。
+實作 available list 讓我體會到記憶體重複利用的重要性，雖然在理論上不改變複雜度，但在實作上能有效提升效率。
 
-在實作過程中，我遇到的主要挑戰是：
+在多項式運算中，加法與減法利用排序串列進行合併，效率良好，但乘法仍是效能瓶頸，特別是在項數增加時，需考慮可能的最佳化策略。
 
-    如何正確合併同次項
-    → 在加法與乘法中，若兩項的指數相同，必須正確累加係數並避免重複。
-
-    動態記憶體管理
-    → 使用 new 與 delete[] 管理 Term 陣列時，必須確保擴充容量後不遺漏舊資料。
-
-    輸入與輸出格式化
-    → 為了讓多項式輸出更直觀，我使用了 operator<< 來格式化顯示，例如自動在正數前加上「+」。
-
-透過這次作業練習，我更加了解：
-
-1. 封裝（Encapsulation） 的重要性 —— 將多項式的邏輯與資料儲存在類別中，使用者只需透過主程式操作。
-
-2. 演算法複雜度分析的應用 —— 乘法時間隨項數平方成長，能明顯觀察效能差異。
-
-3. C++語法特性，如 friend 函數、sort()、pow() 等。
+整體而言，這次作業讓我熟悉了物件導向設計、動態記憶體管理以及鏈結串列操作，對資料結構與演算法的實作能力有明顯提升。
 
 ### 總結
 
-這次作業不僅強化了我對運算子多載與類別設計的理解，也讓我學會如何將數學概念轉化成可執行的程式邏輯，體會到物件導向在工程上的靈活性。
+作業以 circular linked list 搭配 header node 表示多項式，並實作了加法、減法、乘法及求值運算。
+
+透過 available list，有效管理節點記憶體，提升執行效率。
+
+整體程式結構清晰，操作符合理論時間與空間複雜度分析，並提供了良好的可讀性與可維護性。
+
+此次實作讓我對鏈結串列、多項式運算及記憶體管理有更深的理解和操作經驗。
