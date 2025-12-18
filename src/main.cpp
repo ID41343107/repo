@@ -206,6 +206,14 @@ public:
     return os;
     }
 
+    float Eval(float x) const {
+        float result = 0;
+        for (auto it = Begin(); it != End(); ++it) {
+            result += it->coef * std::pow(x, it->exp);
+        }
+        return result;
+    }
+
     friend istream& operator>>(istream& is, Polynomial& p) {
         int n, c, e;
         is >> n;
@@ -220,6 +228,7 @@ public:
 AvailableList Polynomial::Ava;
 
 int main() {
+    int x;
     Polynomial p1, p2;
     cin >> p1 >> p2;
     cout << "P1 = " << p1 << endl;
@@ -227,5 +236,8 @@ int main() {
     cout << "P1 + P2 = " << (p1 + p2) << endl;
     cout << "P1 - P2 = " << (p1 - p2) << endl;
     cout << "P1 * P2 = " << (p1 * p2) << endl;
+    cin>>x;
+    cout << "P1("<< x <<") = " << p1.Eval(x) << endl;
+    cout << "P2("<< x <<") = " << p2.Eval(x) << endl;
     return 0;
 }
